@@ -1,0 +1,67 @@
+version: "3.9"
+
+services:
+  api:
+    build: ./api
+    ports:
+      - "8000:8000"
+    depends_on:
+      - rabbitmq
+
+  extractor:
+    build: ./extractor
+    volumes:
+      - ./extractor/data:/app/data
+    depends_on:
+      - rabbitmq
+
+  transformer:
+    build: ./transformer
+    depends_on:
+      - rabbitmq
+
+  loader:
+    build: ./loader
+    depends_on:
+      - postgres
+      - rabbitmq
+
+  postgres:
+    image: postgres:14
+    restart: always
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: dataops
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"  # UI
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+
+  prometheus:
+    image: prom/prometheus
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+
+  grafana:
+    image: grafana/grafana
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml
+    ports:
+      - "3000:3000"
+
+volumes:
+  postgres_data:
+  grafana_data:
